@@ -1,0 +1,62 @@
+image: docker:latest
+
+cache:
+  paths:
+    - .m2/repository
+
+variables:
+  DOCKER_IMAGE_APP: $CI_REGISTRY_IMAGE:latest
+  CONTAINER_NAME: "$CI_PROJECT_NAME"
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+
+stages:
+  - build
+  - deploy
+
+# Template for building Docker images
+.build_image_template:
+  stage: build
+  script:
+    - echo $CI_JOB_TOKEN | docker login -u gitlab-ci-token --password-stdin $CI_REGISTRY
+    - docker build -t $DOCKER_IMAGE .
+    - docker push $DOCKER_IMAGE
+  services:
+    - docker:dind
+  tags:
+    - docker
+
+# Template for deploying Docker containers
+.deploy_container_template:
+  stage: deploy
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker stop $CONTAINER_NAME || true
+    - docker rm $CONTAINER_NAME || true
+    - docker network create internal_net || true
+    - docker run -d --network=internal_net -v /home/swt2025/$CONTAINER_NAME/data:/app/data --restart=always --name $CONTAINER_NAME $DOCKER_IMAGE
+  services:
+    - docker:dind
+  tags:
+    - docker
+
+# Job for building the Docker image for the master environment
+build_prod_image:
+  extends: .build_image_template
+  variables:
+    DOCKER_IMAGE: $DOCKER_IMAGE_APP
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
+  environment:
+    name: production
+
+
+# Job for deploying the Docker container in the master environment
+deploy_prod_container:
+  extends: .deploy_container_template
+  variables:
+    DOCKER_IMAGE: $DOCKER_IMAGE_APP
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
+      when: manual
+  environment:
+    name: production
