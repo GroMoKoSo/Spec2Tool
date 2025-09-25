@@ -12,7 +12,7 @@ RUN mvn package -DskipTests -Djar.name=springApp
 #RUN mvn package -Djar.name=springApp
 
 # Run layer: only with the jar file
-FROM openjdk:17-jdk-alpine
+FROM maven:3.8.5-openjdk-17-slim
 WORKDIR /app
 COPY --from=maven target/*.jar ./
 EXPOSE 8080
