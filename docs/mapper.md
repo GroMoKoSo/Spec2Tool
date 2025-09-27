@@ -32,7 +32,15 @@ TOOL
   "description": "string",
   "endpoint": "string",
   "requestMethod": "string",
-  "inputSchema": "jsonSchema"
+  "inputSchema": {
+    "type": "object"
+    "properties": {
+      "path": { "type": "object", "properties": {} },
+      "query": { "type": "object", "properties": {} },
+      "headers": { "type": "object", "properties": {} },
+      "body": { "type": "object", "properties": {} }
+    }
+  }
 }
 ```
 
