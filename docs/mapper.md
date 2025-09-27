@@ -33,7 +33,7 @@ TOOL
   "endpoint": "string",
   "requestMethod": "string",
   "inputSchema": {
-    "type": "object"
+    "type": "object",
     "properties": {
       "path": { "type": "object", "properties": {} },
       "query": { "type": "object", "properties": {} },
