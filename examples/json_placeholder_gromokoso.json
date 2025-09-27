@@ -7,7 +7,7 @@
       "description": "Returns all posts",
       "requestMethod": "GET",
       "endpoint": "https://jsonplaceholder.typicode.com/posts",
-      "inputSchema": ""
+      "inputSchema": {}
     },
     {
       "name": "create_a_new_post",
