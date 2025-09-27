@@ -51,15 +51,8 @@ TOOL
 **inputSchema**
 - The `inputSchema` MUST include all relevant parameters from an HTTP/REST call. These parameter include all relevant header, query (request), path and body parameter.
 - Each key of a top level parameter MUST be unique and mapped unambiguously in both directions.
-- To ensure this behavior, each parameter MUST be prefixed based on their origin.
 - The `inputSchema` MUST be self-contained, meaning all references must be inlined recursively (FIXME: How to prevent infinite recursion?).
 
-| Origin | Prefix |
-|--------|--------|
-| HEADER | h_     |
-| PATH   | p_     |
-| QUERY  | q_     |
-| BODY   | b_     |
 
 
 ## Links and References
