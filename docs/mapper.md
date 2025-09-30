@@ -8,7 +8,7 @@
 | Name of Toolset                   | snake_case of `info/title`                   | `name`                 |
 | Description of Toolset            | `info/description`                           | `description`          |
 | Tool definitionen (API endpoints) | `paths`                                      | `tools`                |
-| Description of a tool             | `paths/{PATH}/{METHOD}/summary`              | `{TOOL}summary`        |
+| Description of a tool             | `paths/{PATH}/{METHOD}/summary`              | `{TOOL}/description`        |
 | Name of a tool                    | snake_case  of summary (see above)           | `{TOOL}/name`          |
 | Endpoint url of a tool            | `servers/url` + `paths/{PATH}` (key of PATH) | `{TOOL}/endpoint`      |
 | Request Method of a tool          | `paths/{PATH}/{METHOD}` (key of METHOD)      | `{TOOL}/requestMethod` |
