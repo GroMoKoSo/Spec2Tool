@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: spec2tool
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9000/realms/gromokoso
+          jwk-set-uri: http://gromokoso-keycloak:8080/realms/gromokoso/protocol/openid-connect/certs
+
+server:
+  port: 8080
+
+logging:
+  level:
+    de.thm.spec2tool: DEBUG
+    org.hibernate.sql: DEBUG
+---
+
+spring:
+  config:
+    activate.on-profile: prod
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://zdh-swa-muenker.zdh.thm.de/keycloak/realms/swa2025
+          jwk-set-uri: https://zdh-swa-muenker.zdh.thm.de/keycloak/realms/swa2025/protocol/openid-connect/certs
