@@ -1,3 +1,3 @@
 package dto;
 
-public record ToolSpecificationDto(String format, String fileType, String data) {}
+public record ToolSpecificationDto(String format, String data) {}
