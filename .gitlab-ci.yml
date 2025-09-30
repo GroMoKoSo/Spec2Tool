@@ -6,7 +6,7 @@ cache:
 
 variables:
   DOCKER_IMAGE_APP: $CI_REGISTRY_IMAGE:latest
-  CONTAINER_NAME: "$CI_PROJECT_NAME"
+  CONTAINER_NAME: "gromokoso-$CI_PROJECT_NAME"
   MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
 
 stages:
