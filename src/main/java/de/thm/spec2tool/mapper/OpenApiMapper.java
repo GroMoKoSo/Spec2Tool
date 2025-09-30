@@ -1,8 +1,9 @@
-package mapper;
+package de.thm.spec2tool.mapper;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import de.thm.spec2tool.dto.ToolSetDto;
 import io.swagger.v3.oas.models.*;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.media.ArraySchema;
@@ -14,8 +15,6 @@ import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.parser.OpenAPIV3Parser;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -23,11 +22,9 @@ public class OpenApiMapper {
     // Shared JSON builder for output
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    public static void main(String[] args) throws Exception {
+    public ToolSetDto mapper(Map<String, Object> spec) throws Exception {
         // 1) Load OpenAPI JSON from classpath (/test.json)
-        InputStream in = OpenApiMapper.class.getResourceAsStream("/test.json");
-        if (in == null) throw new IllegalStateException("Could not find test.json in resources.");
-        String raw = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        String raw = MAPPER.writeValueAsString(spec);
 
         // 2) Parse OpenAPI content
         OpenAPI api = new OpenAPIV3Parser().readContents(raw, null, null).getOpenAPI();
@@ -168,6 +165,8 @@ public class OpenApiMapper {
 
         // 11) Print resulting toolset JSON
         System.out.println(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(toolset));
+
+        return MAPPER.treeToValue(toolset, ToolSetDto.class);
     }
 
     // Helper: wrap props (+ optional required) into a { type:"object", properties, required? } node
@@ -246,7 +245,7 @@ public class OpenApiMapper {
             items.put("type", it != null && it.getType() != null ? it.getType() : "object");
             n.set("items", items);
         } else {
-            n.put("type", s != null && s.getType() != null ? s.getType() : "object");
+            n.put("type", s != null && !s.getTypes().isEmpty() ? s.getTypes().toArray()[0].toString() : "object");
         }
         n.put("description", s != null && s.getDescription() != null ? s.getDescription() : "string");
         return n;

@@ -1,12 +1,8 @@
-package service;
+package de.thm.spec2tool.service;
 
-import dto.ApiSpecificationDto;
-import dto.ToolSpecificationDto;
+import de.thm.spec2tool.dto.ToolSpecificationDto;
 
 public abstract class AMapper {
-
-    // Constant holding the specification type
-    public static final String SPEC = "ApiSpecification";
 
     /**
      * Abstract method to convert an API spec into a tool specification.
