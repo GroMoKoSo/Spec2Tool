@@ -1,9 +1,12 @@
 package de.thm.spec2tool.mapper;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import de.thm.spec2tool.dto.ToolSetDto;
+import de.thm.spec2tool.exception.ConversionException;
+import de.thm.spec2tool.service.ConversionServiceImpl;
 import io.swagger.v3.oas.models.*;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.media.ArraySchema;
@@ -14,158 +17,181 @@ import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.parser.OpenAPIV3Parser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.stream.Stream;
 
+@Component
 public class OpenApiMapper {
-    // Shared JSON builder for output
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    public ToolSetDto mapper(Map<String, Object> spec) throws Exception {
-        // 1) Load OpenAPI JSON from classpath (/test.json)
+    Logger logger = LoggerFactory.getLogger(ConversionServiceImpl.class);
+
+    /**
+     * Convert an API spec into a tool specification.
+     * @param spec The API specification as Map of Strings to Objects.
+     * @return A ToolSpecification object.
+     */
+    public ToolSetDto convert(Map<String, Object> spec) throws JsonProcessingException {
+        logger.info("====== Start to convert spec to tool ======");
+        logger.debug("Convert spec to raw string...");
         String raw = MAPPER.writeValueAsString(spec);
 
-        // 2) Parse OpenAPI content
+        logger.debug("Parse spec to OpenApi object format...");
         OpenAPI api = new OpenAPIV3Parser().readContents(raw, null, null).getOpenAPI();
-        if (api == null) throw new IllegalArgumentException("Failed to parse OpenAPI.");
+        if (api == null) {
+            logger.error("Failed to parse spec to OpenApi obejct!");
+            throw new IllegalArgumentException("Failed to parse OpenAPI.");
+        }
 
-        // 3) Determine base URL (first server if present)
+        logger.debug("Extract URLs from spec and set first as base URL...");
         String baseUrl = Optional.ofNullable(api.getServers()).filter(s -> !s.isEmpty())
                 .map(s -> s.get(0)).map(Server::getUrl).orElse("");
 
-        // 4) Create toolset envelope (name/description/tools[])
+        logger.debug("Set head entries: 'name', 'description' and 'toolset'...");
         ObjectNode toolset = MAPPER.createObjectNode();
         toolset.put("name", toSnakeCase(Optional.ofNullable(api.getInfo()).map(Info::getTitle).orElse("toolset")));
-        toolset.put("description", "4-in-1 conversion of the OpenAPI spec.");
+        toolset.put("description", toSnakeCase(Optional.ofNullable(api.getInfo()).map(Info::getDescription).orElse("")));
         ArrayNode tools = MAPPER.createArrayNode();
         toolset.set("tools", tools);
 
-        // 5) Walk all paths → all operations → emit one tool per operation
         if (api.getPaths() != null) {
             api.getPaths().forEach((pathKey, pathItem) -> {
-                if (pathItem == null) return;
+                if (pathItem == null) {
+                    logger.error("No corresponding path for key {}... abort", pathKey);
+                    throw new ConversionException("No corresponding path for key " + pathKey);
+                }
 
                 // Collect non-null operations for this path
-                operationsOf(pathItem).forEach((method, op) -> {
-                    if (op == null) return;
+                operationsOf(pathItem).forEach((httpMethod, operation) -> {
+                    if (operation == null) {
+                        logger.error("No operation for HTTP Method {}, abort...", httpMethod);
+                        throw new ConversionException("No Operation defined for defined HTTP Method " + httpMethod);
+                    }
 
-                    // Tool identity: name/description/method/endpoint
-                    String summary = Optional.ofNullable(op.getSummary())
-                            .orElse(Optional.ofNullable(op.getDescription()).orElse(method + " " + pathKey));
+                    String summary = Optional.ofNullable(operation.getSummary())
+                            .orElse(Optional.ofNullable(operation.getDescription()).orElse(httpMethod + " " + pathKey));
+
+                    logger.info("Add tool with following attributes: name: {}\ndescription: {}\nrequestMethod: {}\nendpoint: {}",
+                            toSnakeCase(summary), summary, httpMethod.name(), concat(baseUrl, pathKey));
 
                     ObjectNode tool = MAPPER.createObjectNode();
                     tool.put("name", toSnakeCase(summary));
                     tool.put("description", summary);
-                    tool.put("requestMethod", method.name());
+                    tool.put("requestMethod", httpMethod.name());
                     tool.put("endpoint", concat(baseUrl, pathKey));
 
-                    // 6) Build 4-in-1 inputSchema (path, query, headers, body)
+                    // Create nodes for mandatory fields inputSchema, properties and required
                     ObjectNode inputSchema = MAPPER.createObjectNode();
-                    ObjectNode properties  = MAPPER.createObjectNode();
                     inputSchema.put("type", "object");
-                    ArrayNode  rootRequired = MAPPER.createArrayNode();
+                    ObjectNode properties  = MAPPER.createObjectNode();
+                    ArrayNode rootRequired = MAPPER.createArrayNode();
 
                     // Buckets for parameters
                     ObjectNode pathProps = MAPPER.createObjectNode();
                     ObjectNode queryProps = MAPPER.createObjectNode();
                     ObjectNode headerProps = MAPPER.createObjectNode();
-                    ArrayNode  pathReq = MAPPER.createArrayNode();
+                    ArrayNode pathReq = MAPPER.createArrayNode();
 
                     // Merge path-level + operation-level parameters
                     List<Parameter> params = new ArrayList<>();
                     if (pathItem.getParameters() != null) params.addAll(pathItem.getParameters());
-                    if (op.getParameters() != null) params.addAll(op.getParameters());
+                    if (operation.getParameters() != null) params.addAll(operation.getParameters());
 
                     // 7) Classify parameters by "in": path/query/header
-                    for (Parameter p : params) {
-                        if (p == null || p.getIn() == null) continue;
-                        String name = p.getName();
-                        Schema<?> s = p.getSchema();
-                        String desc = Optional.ofNullable(p.getDescription()).orElse("string");
+                    logger.info("Add parameters to input schema");
+                    for (Parameter parameter : params) {
+                        if (parameter == null || parameter.getIn() == null) {
+                            logger.warn("Parameter is null or skipping...");
+                            continue;
+                        }
+                        String parameterName = parameter.getName();
+                        String parameterDesc = Optional.ofNullable(parameter.getDescription()).orElse("string");
+                        Schema<?> parameterSchema = parameter.getSchema();
+
+                        if (parameterSchema == null) throw new ConversionException("Schema for parameter " + parameterName + " is null!");
 
                         ObjectNode n = MAPPER.createObjectNode();
-                        switch (p.getIn()) {
+                        switch (parameter.getIn()) {
                             case "path" -> {
-                                // Path param includes type + description; mark required names
-                                n.put("type", s != null && s.getType() != null ? s.getType() : "string");
-                                n.put("description", desc.endsWith("(path)") ? desc : desc + " (path)");
-                                pathProps.set(name, n);
-                                if (Boolean.TRUE.equals(p.getRequired())) pathReq.add(name);
+                                logger.debug("Add path parameter {}", parameterName);
+                                n.put("type",  parameterSchema.getType());
+                                n.put("description", parameterDesc.endsWith("(path)") ? parameterDesc : parameterDesc + " (path)");
+                                pathProps.set(parameterName, n);
+                                if (parameter.getRequired()) pathReq.add(parameterName);
                             }
                             case "query" -> {
-                                // Query param includes type + description
-                                n.put("type", s != null && s.getType() != null ? s.getType() : "string");
-                                n.put("description", desc);
-                                queryProps.set(name, n);
+                                logger.debug("Add Query parameter {}", parameterName);
+                                n.put("type", parameterSchema.getType());
+                                n.put("description", parameterDesc);
+                                queryProps.set(parameterName, n);
                             }
                             case "header" -> {
-                                // Headers: NO "type" per requirement — only description (and possibly enum later)
-                                n.put("description", desc);
-                                headerProps.set(name, n);
+                                logger.debug("Add header {}", parameterName);
+                                n.put("description", parameterDesc);
+                                headerProps.set(parameterName, n);
                             }
                         }
                     }
 
-                    // 8) Request body (only application/json recognized)
-                    boolean hasJsonBody = op.getRequestBody() != null &&
-                            op.getRequestBody().getContent() != null &&
-                            op.getRequestBody().getContent().containsKey("application/json");
-                    boolean bodyRequired = op.getRequestBody() != null &&
-                            Boolean.TRUE.equals(op.getRequestBody().getRequired());
+                    logger.debug("Check if body is required and has jsonFormat...");
+                    boolean bodyRequired = operation.getRequestBody() != null &&
+                            operation.getRequestBody().getRequired();
+                    boolean hasJsonBody = operation.getRequestBody() != null &&
+                            operation.getRequestBody().getContent() != null &&
+                            operation.getRequestBody().getContent().containsKey("application/json");
 
                     ObjectNode bodyNode = null;
                     if (hasJsonBody) {
                         // Resolve and convert body schema
-                        Schema<?> bodySchema = resolveSchema(api, preferJsonSchema(op.getRequestBody().getContent()));
+                        Schema<?> bodySchema = resolveSchema(api, preferJsonSchema(operation.getRequestBody().getContent()));
                         bodyNode = schemaToBodyObject(api, bodySchema);
-
-                        // Add implicit Content-Type header without "type", but with allowed value enum
-                        ObjectNode ct = MAPPER.createObjectNode();
-                        ArrayNode en = MAPPER.createArrayNode(); en.add("application/json");
-                        ct.set("enum", en);
-                        headerProps.set("Content-Type", ct);
                     }
 
-                    // 9) Include non-empty sections; set required flags at root for path/body
-                    if (pathProps.size() > 0 || pathReq.size() > 0) {
+                    if (!pathProps.isEmpty() || !pathReq.isEmpty()) {
+                        logger.debug("Set path properties...");
                         properties.set("path", objWithProps(pathProps, pathReq));
-                        if (pathReq.size() > 0) rootRequired.add("path");
+                        if (!pathReq.isEmpty()) { rootRequired.add("path"); }
                     }
-                    if (queryProps.size() > 0) {
+
+                    if (!queryProps.isEmpty()) {
+                        logger.debug("Set query properties...");
                         properties.set("query", objWithProps(queryProps, null));
                     }
 
-                    // Headers: direct map (no {type:"object"} wrapper, and no types per header)
-                    if (headerProps.size() > 0) {
+                    if (!headerProps.isEmpty()) {
+                        logger.debug("Set header...");
                         properties.set("headers", headerProps);
                     }
 
                     // Body: include only if object-with-props or array
                     if (bodyNode != null) {
-                        String t = bodyNode.path("type").asText(null);
-                        boolean includeBody = "array".equals(t)
-                                || ("object".equals(t) && bodyNode.path("properties").size() > 0);
+                        String bodyRootType = bodyNode.path("type").asText(null);
+                        boolean includeBody = "array".equals(bodyRootType)
+                                || ("object".equals(bodyRootType) && !bodyNode.path("properties").isEmpty());
                         if (includeBody) {
+                            logger.debug("Add body properties...");
                             properties.set("body", bodyNode);
                             if (bodyRequired) rootRequired.add("body");
                         }
                     }
 
-                    // 10) Finalize schema + attach to tool
+                    logger.debug("Set schema of tool");
                     inputSchema.set("properties", properties);
-                    if (rootRequired.size() > 0) inputSchema.set("required", rootRequired);
+                    if (!rootRequired.isEmpty()) inputSchema.set("required", rootRequired);
                     tool.set("inputSchema", inputSchema);
 
-                    // Add tool to collection
+                    logger.info("Successfully convert tool '{}'", toSnakeCase(operation.getSummary()));
                     tools.add(tool);
                 });
             });
         }
 
-        // 11) Print resulting toolset JSON
-        System.out.println(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(toolset));
-
+        logger.info("====== Ending to convert spec to tool ======");
         return MAPPER.treeToValue(toolset, ToolSetDto.class);
     }
 
@@ -174,7 +200,7 @@ public class OpenApiMapper {
         ObjectNode n = MAPPER.createObjectNode();
         n.put("type", "object");
         n.set("properties", props == null ? MAPPER.createObjectNode() : props);
-        if (required != null && required.size() > 0) n.set("required", required);
+        if (required != null && !required.isEmpty()) n.set("required", required);
         return n;
     }
 

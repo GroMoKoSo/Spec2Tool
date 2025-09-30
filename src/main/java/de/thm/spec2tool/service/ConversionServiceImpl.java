@@ -1,8 +1,9 @@
 package de.thm.spec2tool.service;
 
-import de.thm.spec2tool.dto.ApiSpecificationDto;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import de.thm.spec2tool.dto.ToolSetDto;
 import de.thm.spec2tool.mapper.OpenApiMapper;
+import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -13,22 +14,26 @@ import java.util.Map;
 @Service
 public class ConversionServiceImpl implements ConversionService {
 
+    private final OpenApiMapper openApiMapper;
+
     Logger logger = LoggerFactory.getLogger(ConversionServiceImpl.class);
 
-    @Override
-    public ToolSetDto convert(Map<String, Object> spec, String format) {
-        if ("openapi".equalsIgnoreCase(format)) {
-            try {
-                return new OpenApiMapper().mapper(spec);
-            } catch (Exception e) {
-                logger.error(e.getMessage());
-            }
-        }
-        return null;
+    public ConversionServiceImpl(OpenApiMapper openApiMapper) {
+        this.openApiMapper = openApiMapper;
     }
 
     @Override
-    public List<ApiSpecificationDto> getSupportedApiSpec() {
-        return List.of();
+    public ToolSetDto convert(Map<String, Object> spec, String format) throws JsonProcessingException {
+        if ("openapi".equalsIgnoreCase(format)) {
+            return openApiMapper.convert(spec);
+        } else {
+            logger.error("Format not supported: {}", format);
+            throw new NotImplementedException("No conversion for format " + format);
+        }
+    }
+
+    @Override
+    public List<String> getSupportedApiSpec() {
+        return List.of("openapi");
     }
 }

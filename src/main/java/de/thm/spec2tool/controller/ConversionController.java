@@ -1,6 +1,5 @@
 package de.thm.spec2tool.controller;
 
-import de.thm.spec2tool.dto.ApiSpecificationDto;
 import de.thm.spec2tool.dto.ToolSetDto;
 import de.thm.spec2tool.dto.ToolSpecificationDto;
 import org.springframework.web.bind.annotation.*;
@@ -19,12 +18,12 @@ public interface ConversionController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successfully returned all supported specifications",
                     content = { @Content(mediaType = "application/json",
-                            array = @ArraySchema( schema = @Schema(implementation = ApiSpecificationDto.class)))}),
+                            array = @ArraySchema( schema = @Schema(implementation = String.class)))}),
             @ApiResponse(responseCode = "401", description = "Not authorized to perform this request.",
                     content = @Content)}
     )
     @GetMapping("/convert")
-    List<ApiSpecificationDto> getSupportedSpecifications();
+    List<String> getSupportedSpecifications();
 
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Added new User",
