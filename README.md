@@ -30,4 +30,4 @@ mvn spring-boot:run
 ## Documentation
 
 - [GroMoKoSo Documentation](https://github.com/GroMoKoSo/GroMoKoSo-Meta/blob/master/docs/architecture_arc42.md)
-- [Spec2Tool API-apping](https://github.com/GroMoKoSo/Spec2Tool/blob/master/docs/mapper.md)
+- [Spec2Tool API-mapping](https://github.com/GroMoKoSo/Spec2Tool/blob/master/docs/mapper.md)
