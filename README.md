@@ -1,5 +1,10 @@
 # Spec2Tool
 
+![Spring](https://img.shields.io/badge/spring-%236DB33F.svg?style=for-the-badge&logo=spring&logoColor=white)
+![Maven]((https://img.shields.io/badge/apachemaven-C71A36.svg?style=for-the-badge&logo=apachemaven&logoColor=white))
+![Java](https://img.shields.io/badge/java-%23ED8B00.svg?style=for-the-badge&logo=openjdk&logoColor=white)
+
+
 Spec2Tool is a microservice in the GroMoKoSo ecosystem.
 Its primary task is to convert API specifications (e.g., OpenAPI documents) into MCP tool definitions that can be consumed by the MCP server.
 
