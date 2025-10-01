@@ -5,6 +5,8 @@ Its primary task is to convert API specifications (e.g., OpenAPI documents) into
 
 This service enables seamless integration of external APIs into the GroMoKoSo tool layer without manual specification work.
 
+To build the complete GroMoKoSo System, please visit the [Gromokoso-Meta Repository](https://github.com/GroMoKoSo/GroMoKoSo-Meta).
+
 ## Prerequisites
 
 - Java 17+
@@ -27,4 +29,5 @@ mvn spring-boot:run
 
 ## Documentation
 
-- [architecture_arc42.md](https://github.com/GroMoKoSo/GroMoKoSo-Meta/blob/master/docs/architecture_arc42.md)
+- [GroMoKoSo Documentation](https://github.com/GroMoKoSo/GroMoKoSo-Meta/blob/master/docs/architecture_arc42.md)
+- [Spec2Tool API-apping](https://github.com/GroMoKoSo/Spec2Tool/blob/master/docs/mapper.md)
