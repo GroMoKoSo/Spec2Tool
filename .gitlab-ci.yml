@@ -5,7 +5,7 @@ cache:
     - .m2/repository
 
 variables:
-  DOCKER_IMAGE_APP: $CI_REGISTRY_IMAGE:latest
+  DOCKER_IMAGE_APP: $CI_PROJECT_PATH_SLUG:latest
   CONTAINER_NAME: "gromokoso-$CI_PROJECT_NAME"
   MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
 
@@ -17,9 +17,7 @@ stages:
 .build_image_template:
   stage: build
   script:
-    - echo $CI_JOB_TOKEN | docker login -u gitlab-ci-token --password-stdin $CI_REGISTRY
     - docker build -t $DOCKER_IMAGE .
-    - docker push $DOCKER_IMAGE
   services:
     - docker:dind
   tags:
@@ -29,7 +27,6 @@ stages:
 .deploy_container_template:
   stage: deploy
   script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - docker stop $CONTAINER_NAME || true
     - docker rm $CONTAINER_NAME || true
     - docker network create internal_net || true
