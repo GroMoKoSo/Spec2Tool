@@ -119,14 +119,14 @@ public class OpenApiMapper {
                         switch (parameter.getIn()) {
                             case "path" -> {
                                 logger.debug("Add path parameter {}", parameterName);
-                                n.put("type",  parameterSchema.getType());
+                                n.put("type",  parameterSchema.getTypes().toArray()[0].toString());
                                 n.put("description", parameterDesc.endsWith("(path)") ? parameterDesc : parameterDesc + " (path)");
                                 pathProps.set(parameterName, n);
                                 if (parameter.getRequired()) pathReq.add(parameterName);
                             }
                             case "query" -> {
                                 logger.debug("Add Query parameter {}", parameterName);
-                                n.put("type", parameterSchema.getType());
+                                n.put("type", parameterSchema.getTypes().toArray()[0].toString());
                                 n.put("description", parameterDesc);
                                 queryProps.set(parameterName, n);
                             }
